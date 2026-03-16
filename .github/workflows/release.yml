@@ -1,0 +1,40 @@
+name: Publish macOS Release
+
+on:
+  push:
+    tags:
+      - 'v*' # ה-Action ירוץ רק כשאתה דוחף תגית של גרסה חדשה, למשל v1.0.0
+
+permissions:
+  contents: write # חובה כדי של-Action תהיה הרשאה ליצור Release ב-Repo
+
+jobs:
+  release:
+    runs-on: macos-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Build with xcodebuild
+      run: |
+        xcodebuild clean build \
+        -project LangSwitch.xcodeproj \
+        -scheme LangSwitch \
+        -configuration Release \
+        -derivedDataPath build \
+        -destination 'platform=macOS' \
+        CODE_SIGN_IDENTITY="" \
+        CODE_SIGNING_REQUIRED=NO \
+        CODE_SIGNING_ALLOWED=NO
+
+    - name: Zip the .app
+      run: |
+        # שימוש ב-ditto כדי לכווץ את האפליקציה בצורה ששומרת על המבנה הפנימי של ה-macOS
+        ditto -c -k --sequesterRsrc --keepParent build/Build/Products/Release/LangSwitch.app LangSwitch.zip
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: LangSwitch.zip
+        generate_release_notes: true

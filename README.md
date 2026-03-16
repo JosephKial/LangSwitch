@@ -80,6 +80,23 @@ WordClassifier analyzes the word:
     └─ Valid only in current layout → Do nothing
 ```
 
-## License
+## Installation & Resolving the "Damaged App" Warning
 
-Private project.
+Since LangSwitch is a free, open-source project and is not signed with a paid Apple Developer certificate, macOS Gatekeeper will flag it. When you try to open it for the first time, macOS might warn that the app is from an "unidentified developer" or even claim the file is "damaged and should be moved to the Trash". 
+
+This is standard macOS behavior for unsigned apps downloaded from the internet. Here is how to bypass it safely:
+
+**Method 1: The Context Menu (Works on some macOS versions)**
+1. Extract the downloaded ZIP and move `LangSwitch.app` into your `Applications` folder.
+2. **Do not double-click** the app. Instead, **Right-click** (or Control-click) it.
+3. Select **Open** from the menu.
+4. Click **Open** again in the security prompt. You only need to do this once.
+
+**Method 2: Terminal (Recommended & Foolproof)**
+If Method 1 fails and macOS stubbornly insists the app is damaged, you need to strip the Apple quarantine attribute that was added when you downloaded the file.
+1. Ensure `LangSwitch.app` is inside your `Applications` folder.
+2. Open the **Terminal** app.
+3. Paste the following command and press Enter:
+   ```bash
+   xattr -cr /Applications/LangSwitch.app
+4. You can now launch LangSwitch normally like any other app.
