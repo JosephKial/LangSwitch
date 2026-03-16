@@ -15,7 +15,13 @@ struct CorrectionRecord: Identifiable {
     let inputText: String
     let outputText: String
     let appName: String
-    let appColor: Color
+
+    /// Derive a consistent color from the app name
+    var appColor: Color {
+        let colors: [Color] = [.blue, .orange, .green, .red, .purple, .pink, .teal, .indigo]
+        let hash = appName.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return colors[hash % colors.count]
+    }
 }
 
 enum SidebarItem: String, CaseIterable, Identifiable {
