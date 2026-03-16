@@ -11,6 +11,15 @@ import Carbon
 final class TypingEngine {
     var isEnabled: Bool = true
 
+    /// Called on the background thread when a correction is made.
+    var onCorrection: ((CorrectionRecord) -> Void)?
+
+    /// Return true to skip auto-correction for this app bundle ID.
+    var shouldSkipApp: ((String) -> Bool)?
+
+    /// Return true to skip auto-correction for this word.
+    var shouldSkipWord: ((String) -> Bool)?
+
     private var hebrewID: String {
         UserDefaults.standard.string(forKey: "hebrewInputSourceID") ?? "com.apple.keylayout.Hebrew"
     }
@@ -135,22 +144,27 @@ final class TypingEngine {
     
     private func handleAmbiguityAcceptance() {
         guard let ambiguity = pendingAmbiguity else { return }
-        
+
         isInjecting = true
-        defer { 
+        defer {
             isInjecting = false
             dismissAmbiguityTooltip()
         }
-        
-        // Delete the original word (including the space that was typed after it)
+
         postBackspaces(count: pendingWordLength + 1)
-        
-        // Switch to the alternative input source
         InputSourceSwitcher.select(inputSourceID: ambiguity.alternativeInputSourceID)
-        
-        // Type the alternative word followed by a space
         postString(ambiguity.alternativeWord)
         postKey(KeyCodes.space)
+
+        // Report the correction
+        let appName = frontmostAppShortName()
+        let record = CorrectionRecord(
+            time: Date(),
+            inputText: ambiguity.currentWord,
+            outputText: ambiguity.alternativeWord,
+            appName: appName
+        )
+        onCorrection?(record)
     }
     
     private func dismissAmbiguityTooltip() {
@@ -171,18 +185,38 @@ final class TypingEngine {
         }
     }
 
+    /// Returns the bundle identifier of the frontmost application.
+    private func frontmostAppBundleID() -> String? {
+        NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+    }
+
+    /// Returns a short display name for the frontmost app (first letter).
+    private func frontmostAppShortName() -> String {
+        let name = NSWorkspace.shared.frontmostApplication?.localizedName ?? "?"
+        return String(name.prefix(1))
+    }
+
     private func processWordOnBoundary(boundaryKey: CGKeyCode) {
         let word = buffer
         guard word.count >= minWordLength else { return }
 
+        // Check if current app is excluded
+        if let bundleID = frontmostAppBundleID(), shouldSkipApp?(bundleID) == true {
+            return
+        }
+
+        // Check if word is excluded
+        if shouldSkipWord?(word) == true {
+            return
+        }
+
         let classifier = WordClassifier(hebrewID: hebrewID, englishID: englishID)
-        
+
         // First, check for dual-layout ambiguity (if feature is enabled)
         if dualLayoutAmbiguityEnabled {
             if let ambiguity = classifier.detectAmbiguity(for: word) {
-                // Word is valid in both layouts - show tooltip and wait for user decision
                 showAmbiguityTooltip(for: ambiguity, wordLength: word.count)
-                return  // Don't auto-replace, let user decide with Tab
+                return
             }
         }
 
@@ -193,15 +227,19 @@ final class TypingEngine {
         isInjecting = true
         defer { isInjecting = false }
 
-        // מחיקת המילה המקורית
         postBackspaces(count: word.count)
-
-        // החלפת שפה
         InputSourceSwitcher.select(inputSourceID: decision.targetInputSourceID)
-
-        // הקלדת המילה החדשה
         postString(decision.replacement)
-        
+
+        // Report the correction
+        let appName = frontmostAppShortName()
+        let record = CorrectionRecord(
+            time: Date(),
+            inputText: word,
+            outputText: decision.replacement,
+            appName: appName
+        )
+        onCorrection?(record)
     }
 
     private func postBackspaces(count: Int) {

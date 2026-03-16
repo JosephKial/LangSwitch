@@ -15,7 +15,13 @@ struct CorrectionRecord: Identifiable {
     let inputText: String
     let outputText: String
     let appName: String
-    let appColor: Color
+
+    /// Derive a consistent color from the app name
+    var appColor: Color {
+        let colors: [Color] = [.blue, .orange, .green, .red, .purple, .pink, .teal, .indigo]
+        let hash = appName.unicodeScalars.reduce(0) { $0 + Int($1.value) }
+        return colors[hash % colors.count]
+    }
 }
 
 enum SidebarItem: String, CaseIterable, Identifiable {
@@ -37,47 +43,29 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 // MARK: - Main Window View
 
 struct MainWindowView: View {
-    @State private var selectedItem: SidebarItem = .dashboard
-    @State private var isLangSwitchEnabled: Bool = true
-    @State private var correctionsToday: Int = 142
-    @State private var percentageChange: Double = 12
-    
-    @State private var recentActivity: [CorrectionRecord] = [
-        CorrectionRecord(time: createTime(hour: 10, minute: 42), inputText: "cecue", outputText: "בקבוק", appName: "S", appColor: .blue),
-        CorrectionRecord(time: createTime(hour: 10, minute: 38), inputText: "kusv", outputText: "למה", appName: "D", appColor: .orange),
-        CorrectionRecord(time: createTime(hour: 9, minute: 15), inputText: "aku,", outputText: "שלום", appName: "M", appColor: .green),
-        CorrectionRecord(time: createTime(hour: 8, minute: 45), inputText: "ghb, v", outputText: "גבינה", appName: "N", appColor: .red),
-    ]
-    
+    @EnvironmentObject var appState: AppState
+
     var body: some View {
         NavigationSplitView {
-            SidebarView(selectedItem: $selectedItem)
+            SidebarView(selectedItem: $appState.selectedSidebarItem)
         } detail: {
-            switch selectedItem {
+            switch appState.selectedSidebarItem {
             case .dashboard:
                 DashboardView(
-                    isEnabled: $isLangSwitchEnabled,
-                    correctionsToday: correctionsToday,
-                    percentageChange: percentageChange,
-                    recentActivity: recentActivity
+                    isEnabled: $appState.isEnabled,
+                    correctionsToday: appState.correctionsToday,
+                    percentageChange: appState.percentageChange,
+                    recentActivity: appState.corrections
                 )
             case .exceptions:
                 ExceptionsView()
+                    .environmentObject(appState)
             case .preferences:
                 PreferencesContentView()
             }
         }
         .frame(minWidth: 900, minHeight: 650)
     }
-}
-
-// MARK: - Helper Functions
-
-private func createTime(hour: Int, minute: Int) -> Date {
-    var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-    components.hour = hour
-    components.minute = minute
-    return Calendar.current.date(from: components) ?? Date()
 }
 
 // MARK: - Sidebar View
@@ -232,20 +220,22 @@ struct StatusCardView: View {
                 // Active Badge
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.green)
+                        .fill(isEnabled ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
-                    Text("ACTIVE")
+                    Text(isEnabled ? "ACTIVE" : "PAUSED")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.green)
+                        .foregroundColor(isEnabled ? .green : .red)
                 }
-                
+
                 // Title and Toggle
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("LangSwitch is On")
+                        Text(isEnabled ? "LangSwitch is On" : "LangSwitch is Off")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
-                        Text("Monitoring keystrokes to detect and correct language\nmismatches automatically.")
+                        Text(isEnabled
+                            ? "Monitoring keystrokes to detect and correct language\nmismatches automatically."
+                            : "Language detection is paused. Toggle to resume.")
                             .font(.system(size: 13))
                             .foregroundColor(.gray)
                             .lineSpacing(2)
@@ -284,13 +274,15 @@ struct StatusCardView: View {
                     .font(.system(size: 48, weight: .bold))
                     .foregroundColor(.white)
                 
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12))
-                    Text("+\(Int(percentageChange))% vs yesterday")
-                        .font(.system(size: 12))
+                if percentageChange != 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: percentageChange > 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 12))
+                        Text("\(percentageChange > 0 ? "+" : "")\(Int(percentageChange))% vs yesterday")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(percentageChange > 0 ? .green : .orange)
                 }
-                .foregroundColor(.green)
             }
             .padding(24)
             .frame(width: 200)
@@ -355,12 +347,25 @@ struct RecentActivityView: View {
                     .background(Color.gray.opacity(0.3))
                 
                 // Data Rows
-                ForEach(records) { record in
-                    ActivityRowView(record: record, timeFormatter: timeFormatter)
-                    
-                    if record.id != records.last?.id {
-                        Divider()
-                            .background(Color.gray.opacity(0.2))
+                if records.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("No corrections yet")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        Text("Start typing in any app — LangSwitch will auto-correct wrong-layout words.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray.opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                } else {
+                    ForEach(records.prefix(20)) { record in
+                        ActivityRowView(record: record, timeFormatter: timeFormatter)
+
+                        if record.id != records.last?.id {
+                            Divider()
+                                .background(Color.gray.opacity(0.2))
+                        }
                     }
                 }
             }
@@ -461,30 +466,335 @@ struct ProTipCardView: View {
 // MARK: - Placeholder Views
 
 struct ExceptionsView: View {
+    @EnvironmentObject var appState: AppState
+    @State private var newWord: String = ""
+    @State private var newApp: String = ""
+    @State private var selectedTab: Int = 0
+
     var body: some View {
-        VStack {
-            Text("Exceptions")
-                .font(.largeTitle)
-                .foregroundColor(.white)
-            Text("Configure apps and words to exclude from automatic switching")
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Text("Exceptions")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 24)
+            .padding(.bottom, 8)
+
+            Text("Configure apps and words to exclude from automatic switching.")
+                .font(.system(size: 13))
                 .foregroundColor(.gray)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 20)
+
+            // Tab picker
+            Picker("", selection: $selectedTab) {
+                Text("Excluded Words").tag(0)
+                Text("Excluded Apps").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 32)
+            .padding(.bottom, 16)
+
+            if selectedTab == 0 {
+                excludedWordsSection
+            } else {
+                excludedAppsSection
+            }
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.09, blue: 0.10))
     }
+
+    private var excludedWordsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Add word
+            HStack(spacing: 8) {
+                TextField("Add a word to exclude...", text: $newWord)
+                    .textFieldStyle(.roundedBorder)
+                Button("Add") {
+                    let trimmed = newWord.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty,
+                          !appState.excludedWords.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
+                    else { return }
+                    appState.excludedWords.append(trimmed)
+                    newWord = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 32)
+
+            // List
+            if appState.excludedWords.isEmpty {
+                VStack(spacing: 8) {
+                    Text("No excluded words")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    Text("Words added here will never be auto-corrected.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(appState.excludedWords, id: \.self) { word in
+                            HStack {
+                                Text(word)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Button(action: {
+                                    appState.excludedWords.removeAll { $0 == word }
+                                }) {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red.opacity(0.8))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+
+                            Divider().background(Color.gray.opacity(0.2))
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.13, green: 0.14, blue: 0.16))
+                    )
+                }
+                .padding(.horizontal, 32)
+            }
+        }
+    }
+
+    private var excludedAppsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Add app by bundle ID
+            HStack(spacing: 8) {
+                TextField("App bundle ID (e.g. com.apple.Notes)", text: $newApp)
+                    .textFieldStyle(.roundedBorder)
+                Button("Add") {
+                    let trimmed = newApp.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty, !appState.excludedApps.contains(trimmed) else { return }
+                    appState.excludedApps.append(trimmed)
+                    newApp = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newApp.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 32)
+
+            // Running apps picker
+            RunningAppsPickerView()
+                .environmentObject(appState)
+                .padding(.horizontal, 32)
+
+            // List
+            if appState.excludedApps.isEmpty {
+                VStack(spacing: 8) {
+                    Text("No excluded apps")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    Text("Apps added here will not trigger auto-correction.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(appState.excludedApps, id: \.self) { bundleID in
+                            HStack {
+                                Text(bundleID)
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 13, design: .monospaced))
+                                Spacer()
+                                Button(action: {
+                                    appState.excludedApps.removeAll { $0 == bundleID }
+                                }) {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red.opacity(0.8))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+
+                            Divider().background(Color.gray.opacity(0.2))
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.13, green: 0.14, blue: 0.16))
+                    )
+                }
+                .padding(.horizontal, 32)
+            }
+        }
+    }
+}
+
+/// Displays running apps for quick exclusion
+struct RunningAppsPickerView: View {
+    @EnvironmentObject var appState: AppState
+
+    private var runningApps: [(name: String, bundleID: String)] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap { app in
+                guard let name = app.localizedName, let bid = app.bundleIdentifier else { return nil }
+                return (name, bid)
+            }
+            .sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Quick add from running apps:")
+                .font(.system(size: 12))
+                .foregroundColor(.gray)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(runningApps, id: \.bundleID) { app in
+                        let isExcluded = appState.excludedApps.contains(app.bundleID)
+                        Button(action: {
+                            if isExcluded {
+                                appState.excludedApps.removeAll { $0 == app.bundleID }
+                            } else {
+                                appState.excludedApps.append(app.bundleID)
+                            }
+                        }) {
+                            Text(app.name)
+                                .font(.system(size: 12))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(isExcluded ? Color.red.opacity(0.3) : Color(red: 0.2, green: 0.21, blue: 0.23))
+                                )
+                                .foregroundColor(isExcluded ? .red : .white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
 }
 
 struct PreferencesContentView: View {
+    @AppStorage("hebrewInputSourceID") private var hebrewID: String = "com.apple.keylayout.Hebrew"
+    @AppStorage("englishInputSourceID") private var englishID: String = "com.apple.keylayout.ABC"
+    @AppStorage("minWordLength") private var minWordLength: Int = 2
+    @AppStorage("dualLayoutAmbiguityEnabled") private var dualLayoutAmbiguityEnabled: Bool = true
+    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
+
     var body: some View {
-        VStack {
-            Text("Preferences")
-                .font(.largeTitle)
-                .foregroundColor(.white)
-            Text("Customize LangSwitch behavior and settings")
-                .foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Text("Preferences")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Input Sources
+                    preferencesCard(title: "Input Sources", icon: "keyboard") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Hebrew Input Source ID")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                                TextField("com.apple.keylayout.Hebrew", text: $hebrewID)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 13, design: .monospaced))
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("English Input Source ID")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                                TextField("com.apple.keylayout.ABC", text: $englishID)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 13, design: .monospaced))
+                            }
+                            Text("If switching doesn't work, verify these IDs exist on your system.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray.opacity(0.7))
+                        }
+                    }
+
+                    // Behavior
+                    preferencesCard(title: "Behavior", icon: "gearshape.2") {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Minimum word length")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Stepper("\(minWordLength) characters", value: $minWordLength, in: 1...20)
+                                    .foregroundColor(.gray)
+                            }
+
+                            Divider().background(Color.gray.opacity(0.3))
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Toggle("Dual-Layout Ambiguity Detection", isOn: $dualLayoutAmbiguityEnabled)
+                                    .foregroundColor(.white)
+                                if dualLayoutAmbiguityEnabled {
+                                    Text("When a word is valid in both layouts, a tooltip appears. Press Tab to switch.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.gray.opacity(0.7))
+                                }
+                            }
+                        }
+                    }
+
+                    // General
+                    preferencesCard(title: "General", icon: "laptopcomputer") {
+                        Toggle("Launch at Login", isOn: $launchAtLogin)
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 32)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.09, blue: 0.10))
+    }
+
+    private func preferencesCard<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(.blue)
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            content()
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 0.13, green: 0.14, blue: 0.16))
+        )
     }
 }
 

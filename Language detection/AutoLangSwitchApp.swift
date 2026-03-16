@@ -10,18 +10,16 @@ import SwiftUI
 @main
 struct AutoLangSwitchApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
+    @StateObject private var appState = AppState.shared
 
     var body: some Scene {
         WindowGroup {
             MainWindowView()
+                .environmentObject(appState)
                 .preferredColorScheme(.dark)
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 950, height: 700)
-        
-        
-        Settings {
-            SettingsView()
-        }
+        .handlesExternalEvents(matching: Set(arrayLiteral: "main"))
     }
 }
