@@ -63,6 +63,7 @@ final class AppState: ObservableObject {
 
     private init() {
         load()
+        loadCorrections()
         engine.isEnabled = isEnabled
         engine.onCorrection = { [weak self] record in
             DispatchQueue.main.async {
