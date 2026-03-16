@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
-		18FBE7EA2F2392E000CDC42D /* Language detection.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Language detection.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		18FBE7EA2F2392E000CDC42D /* LangSwitch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LangSwitch.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -40,7 +40,7 @@
 		18FBE7EB2F2392E000CDC42D /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				18FBE7EA2F2392E000CDC42D /* Language detection.app */,
+				18FBE7EA2F2392E000CDC42D /* LangSwitch.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -48,9 +48,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		18FBE7E92F2392E000CDC42D /* Language detection */ = {
+		18FBE7E92F2392E000CDC42D /* LangSwitch */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 18FBE7F52F2392E300CDC42D /* Build configuration list for PBXNativeTarget "Language detection" */;
+			buildConfigurationList = 18FBE7F52F2392E300CDC42D /* Build configuration list for PBXNativeTarget "LangSwitch" */;
 			buildPhases = (
 				18FBE7E62F2392E000CDC42D /* Sources */,
 				18FBE7E72F2392E000CDC42D /* Frameworks */,
@@ -63,11 +63,11 @@
 			fileSystemSynchronizedGroups = (
 				18FBE7EC2F2392E000CDC42D /* Language detection */,
 			);
-			name = "Language detection";
+			name = LangSwitch;
 			packageProductDependencies = (
 			);
 			productName = "Language detection";
-			productReference = 18FBE7EA2F2392E000CDC42D /* Language detection.app */;
+			productReference = 18FBE7EA2F2392E000CDC42D /* LangSwitch.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -85,7 +85,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 18FBE7E52F2392E000CDC42D /* Build configuration list for PBXProject "Language detection" */;
+			buildConfigurationList = 18FBE7E52F2392E000CDC42D /* Build configuration list for PBXProject "LangSwitch" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -99,7 +99,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				18FBE7E92F2392E000CDC42D /* Language detection */,
+				18FBE7E92F2392E000CDC42D /* LangSwitch */,
 			);
 		};
 /* End PBXProject section */
@@ -183,6 +183,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
 			};
 			name = Debug;
 		};
@@ -236,6 +237,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
 			};
 			name = Release;
 		};
@@ -246,9 +248,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -288,9 +289,8 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
 				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
@@ -326,7 +326,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		18FBE7E52F2392E000CDC42D /* Build configuration list for PBXProject "Language detection" */ = {
+		18FBE7E52F2392E000CDC42D /* Build configuration list for PBXProject "LangSwitch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				18FBE7F32F2392E300CDC42D /* Debug */,
@@ -335,7 +335,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		18FBE7F52F2392E300CDC42D /* Build configuration list for PBXNativeTarget "Language detection" */ = {
+		18FBE7F52F2392E300CDC42D /* Build configuration list for PBXNativeTarget "LangSwitch" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				18FBE7F62F2392E300CDC42D /* Debug */,
