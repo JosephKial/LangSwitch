@@ -18,6 +18,8 @@ final class AppState: ObservableObject {
         didSet { engine.isEnabled = isEnabled }
     }
 
+    @Published var selectedSidebarItem: SidebarItem = .dashboard
+
     @Published var corrections: [CorrectionRecord] = []
 
     /// Corrections made today

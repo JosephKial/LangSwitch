@@ -20,9 +20,6 @@ struct AutoLangSwitchApp: App {
         }
         .windowStyle(.hiddenTitleBar)
         .defaultSize(width: 950, height: 700)
-
-        Settings {
-            SettingsView()
-        }
+        .handlesExternalEvents(matching: Set(arrayLiteral: "main"))
     }
 }

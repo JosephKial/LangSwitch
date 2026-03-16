@@ -44,13 +44,12 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 
 struct MainWindowView: View {
     @EnvironmentObject var appState: AppState
-    @State private var selectedItem: SidebarItem = .dashboard
 
     var body: some View {
         NavigationSplitView {
-            SidebarView(selectedItem: $selectedItem)
+            SidebarView(selectedItem: $appState.selectedSidebarItem)
         } detail: {
-            switch selectedItem {
+            switch appState.selectedSidebarItem {
             case .dashboard:
                 DashboardView(
                     isEnabled: $appState.isEnabled,

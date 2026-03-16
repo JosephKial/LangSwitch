@@ -57,8 +57,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func openSettingsWindow() {
+        appState.selectedSidebarItem = .preferences
+        showMainWindow()
+    }
+
+    private func showMainWindow() {
         NSApp.activate(ignoringOtherApps: true)
-        NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+        if let window = NSApp.windows.first(where: { !$0.isKind(of: NSPanel.self) }) {
+            window.makeKeyAndOrderFront(nil)
+        }
     }
 
     @objc private func quitApp() {
