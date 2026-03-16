@@ -9,20 +9,18 @@ import Cocoa
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private let engine = TypingEngine()
+    private let appState = AppState.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        statusItem.button?.title = ""
-       
         statusItem.button?.image = NSImage(systemSymbolName: "globe", accessibilityDescription: "Language Switcher")
 
         let menu = NSMenu()
 
         let toggleItem = NSMenuItem(title: "Enable", action: #selector(toggleEnabled), keyEquivalent: "")
-        toggleItem.state = engine.isEnabled ? .on : .off
+        toggleItem.state = appState.isEnabled ? .on : .off
         toggleItem.target = self
         menu.addItem(toggleItem)
 
@@ -40,12 +38,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusItem.menu = menu
 
-        engine.start()
+        appState.start()
     }
 
     @objc private func toggleEnabled(_ sender: NSMenuItem) {
-        engine.isEnabled.toggle()
-        sender.state = engine.isEnabled ? .on : .off
+        appState.isEnabled.toggle()
+        sender.state = appState.isEnabled ? .on : .off
     }
 
     @objc private func openSettingsWindow() {
