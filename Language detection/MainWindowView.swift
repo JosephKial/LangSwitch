@@ -43,18 +43,9 @@ enum SidebarItem: String, CaseIterable, Identifiable {
 // MARK: - Main Window View
 
 struct MainWindowView: View {
+    @EnvironmentObject var appState: AppState
     @State private var selectedItem: SidebarItem = .dashboard
-    @State private var isLangSwitchEnabled: Bool = true
-    @State private var correctionsToday: Int = 142
-    @State private var percentageChange: Double = 12
-    
-    @State private var recentActivity: [CorrectionRecord] = [
-        CorrectionRecord(time: createTime(hour: 10, minute: 42), inputText: "cecue", outputText: "בקבוק", appName: "S", appColor: .blue),
-        CorrectionRecord(time: createTime(hour: 10, minute: 38), inputText: "kusv", outputText: "למה", appName: "D", appColor: .orange),
-        CorrectionRecord(time: createTime(hour: 9, minute: 15), inputText: "aku,", outputText: "שלום", appName: "M", appColor: .green),
-        CorrectionRecord(time: createTime(hour: 8, minute: 45), inputText: "ghb, v", outputText: "גבינה", appName: "N", appColor: .red),
-    ]
-    
+
     var body: some View {
         NavigationSplitView {
             SidebarView(selectedItem: $selectedItem)
@@ -62,28 +53,20 @@ struct MainWindowView: View {
             switch selectedItem {
             case .dashboard:
                 DashboardView(
-                    isEnabled: $isLangSwitchEnabled,
-                    correctionsToday: correctionsToday,
-                    percentageChange: percentageChange,
-                    recentActivity: recentActivity
+                    isEnabled: $appState.isEnabled,
+                    correctionsToday: appState.correctionsToday,
+                    percentageChange: appState.percentageChange,
+                    recentActivity: appState.corrections
                 )
             case .exceptions:
                 ExceptionsView()
+                    .environmentObject(appState)
             case .preferences:
                 PreferencesContentView()
             }
         }
         .frame(minWidth: 900, minHeight: 650)
     }
-}
-
-// MARK: - Helper Functions
-
-private func createTime(hour: Int, minute: Int) -> Date {
-    var components = Calendar.current.dateComponents([.year, .month, .day], from: Date())
-    components.hour = hour
-    components.minute = minute
-    return Calendar.current.date(from: components) ?? Date()
 }
 
 // MARK: - Sidebar View
@@ -238,20 +221,22 @@ struct StatusCardView: View {
                 // Active Badge
                 HStack(spacing: 6) {
                     Circle()
-                        .fill(Color.green)
+                        .fill(isEnabled ? Color.green : Color.red)
                         .frame(width: 8, height: 8)
-                    Text("ACTIVE")
+                    Text(isEnabled ? "ACTIVE" : "PAUSED")
                         .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(.green)
+                        .foregroundColor(isEnabled ? .green : .red)
                 }
-                
+
                 // Title and Toggle
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("LangSwitch is On")
+                        Text(isEnabled ? "LangSwitch is On" : "LangSwitch is Off")
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundColor(.white)
-                        Text("Monitoring keystrokes to detect and correct language\nmismatches automatically.")
+                        Text(isEnabled
+                            ? "Monitoring keystrokes to detect and correct language\nmismatches automatically."
+                            : "Language detection is paused. Toggle to resume.")
                             .font(.system(size: 13))
                             .foregroundColor(.gray)
                             .lineSpacing(2)
@@ -290,13 +275,15 @@ struct StatusCardView: View {
                     .font(.system(size: 48, weight: .bold))
                     .foregroundColor(.white)
                 
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.right")
-                        .font(.system(size: 12))
-                    Text("+\(Int(percentageChange))% vs yesterday")
-                        .font(.system(size: 12))
+                if percentageChange != 0 {
+                    HStack(spacing: 4) {
+                        Image(systemName: percentageChange > 0 ? "arrow.up.right" : "arrow.down.right")
+                            .font(.system(size: 12))
+                        Text("\(percentageChange > 0 ? "+" : "")\(Int(percentageChange))% vs yesterday")
+                            .font(.system(size: 12))
+                    }
+                    .foregroundColor(percentageChange > 0 ? .green : .orange)
                 }
-                .foregroundColor(.green)
             }
             .padding(24)
             .frame(width: 200)
@@ -361,12 +348,25 @@ struct RecentActivityView: View {
                     .background(Color.gray.opacity(0.3))
                 
                 // Data Rows
-                ForEach(records) { record in
-                    ActivityRowView(record: record, timeFormatter: timeFormatter)
-                    
-                    if record.id != records.last?.id {
-                        Divider()
-                            .background(Color.gray.opacity(0.2))
+                if records.isEmpty {
+                    VStack(spacing: 8) {
+                        Text("No corrections yet")
+                            .font(.system(size: 14))
+                            .foregroundColor(.gray)
+                        Text("Start typing in any app — LangSwitch will auto-correct wrong-layout words.")
+                            .font(.system(size: 12))
+                            .foregroundColor(.gray.opacity(0.7))
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 24)
+                } else {
+                    ForEach(records.prefix(20)) { record in
+                        ActivityRowView(record: record, timeFormatter: timeFormatter)
+
+                        if record.id != records.last?.id {
+                            Divider()
+                                .background(Color.gray.opacity(0.2))
+                        }
                     }
                 }
             }
