@@ -520,7 +520,9 @@ struct ExceptionsView: View {
                     .textFieldStyle(.roundedBorder)
                 Button("Add") {
                     let trimmed = newWord.trimmingCharacters(in: .whitespaces)
-                    guard !trimmed.isEmpty, !appState.excludedWords.contains(trimmed) else { return }
+                    guard !trimmed.isEmpty,
+                          !appState.excludedWords.contains(where: { $0.caseInsensitiveCompare(trimmed) == .orderedSame })
+                    else { return }
                     appState.excludedWords.append(trimmed)
                     newWord = ""
                 }

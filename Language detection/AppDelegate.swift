@@ -6,10 +6,13 @@
 //
 
 import Cocoa
+import Combine
 
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
     private let appState = AppState.shared
+    private var enabledCancellable: AnyCancellable?
+    private weak var toggleItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
@@ -19,10 +22,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
 
-        let toggleItem = NSMenuItem(title: "Enable", action: #selector(toggleEnabled), keyEquivalent: "")
-        toggleItem.state = appState.isEnabled ? .on : .off
-        toggleItem.target = self
-        menu.addItem(toggleItem)
+        let toggle = NSMenuItem(title: "Enable", action: #selector(toggleEnabled), keyEquivalent: "")
+        toggle.state = appState.isEnabled ? .on : .off
+        toggle.target = self
+        menu.addItem(toggle)
+        self.toggleItem = toggle
 
         menu.addItem(.separator())
 
@@ -38,12 +42,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         statusItem.menu = menu
 
+        // Keep menu item in sync when isEnabled changes from the dashboard
+        enabledCancellable = appState.$isEnabled
+            .receive(on: RunLoop.main)
+            .sink { [weak self] enabled in
+                self?.toggleItem?.state = enabled ? .on : .off
+            }
+
         appState.start()
     }
 
     @objc private func toggleEnabled(_ sender: NSMenuItem) {
         appState.isEnabled.toggle()
-        sender.state = appState.isEnabled ? .on : .off
     }
 
     @objc private func openSettingsWindow() {
