@@ -691,16 +691,109 @@ struct RunningAppsPickerView: View {
 }
 
 struct PreferencesContentView: View {
+    @AppStorage("hebrewInputSourceID") private var hebrewID: String = "com.apple.keylayout.Hebrew"
+    @AppStorage("englishInputSourceID") private var englishID: String = "com.apple.keylayout.ABC"
+    @AppStorage("minWordLength") private var minWordLength: Int = 2
+    @AppStorage("dualLayoutAmbiguityEnabled") private var dualLayoutAmbiguityEnabled: Bool = true
+    @AppStorage("launchAtLogin") private var launchAtLogin: Bool = false
+
     var body: some View {
-        VStack {
-            Text("Preferences")
-                .font(.largeTitle)
-                .foregroundColor(.white)
-            Text("Customize LangSwitch behavior and settings")
-                .foregroundColor(.gray)
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Text("Preferences")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 24)
+            .padding(.bottom, 20)
+
+            ScrollView {
+                VStack(spacing: 20) {
+                    // Input Sources
+                    preferencesCard(title: "Input Sources", icon: "keyboard") {
+                        VStack(alignment: .leading, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Hebrew Input Source ID")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                                TextField("com.apple.keylayout.Hebrew", text: $hebrewID)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 13, design: .monospaced))
+                            }
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("English Input Source ID")
+                                    .font(.system(size: 12))
+                                    .foregroundColor(.gray)
+                                TextField("com.apple.keylayout.ABC", text: $englishID)
+                                    .textFieldStyle(.roundedBorder)
+                                    .font(.system(size: 13, design: .monospaced))
+                            }
+                            Text("If switching doesn't work, verify these IDs exist on your system.")
+                                .font(.system(size: 11))
+                                .foregroundColor(.gray.opacity(0.7))
+                        }
+                    }
+
+                    // Behavior
+                    preferencesCard(title: "Behavior", icon: "gearshape.2") {
+                        VStack(alignment: .leading, spacing: 16) {
+                            HStack {
+                                Text("Minimum word length")
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Stepper("\(minWordLength) characters", value: $minWordLength, in: 1...20)
+                                    .foregroundColor(.gray)
+                            }
+
+                            Divider().background(Color.gray.opacity(0.3))
+
+                            VStack(alignment: .leading, spacing: 6) {
+                                Toggle("Dual-Layout Ambiguity Detection", isOn: $dualLayoutAmbiguityEnabled)
+                                    .foregroundColor(.white)
+                                if dualLayoutAmbiguityEnabled {
+                                    Text("When a word is valid in both layouts, a tooltip appears. Press Tab to switch.")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.gray.opacity(0.7))
+                                }
+                            }
+                        }
+                    }
+
+                    // General
+                    preferencesCard(title: "General", icon: "laptopcomputer") {
+                        Toggle("Launch at Login", isOn: $launchAtLogin)
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding(.horizontal, 32)
+                .padding(.bottom, 32)
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.09, blue: 0.10))
+    }
+
+    private func preferencesCard<Content: View>(title: String, icon: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 14))
+                    .foregroundColor(.blue)
+                Text(title)
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+            content()
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12)
+                .fill(Color(red: 0.13, green: 0.14, blue: 0.16))
+        )
     }
 }
 
