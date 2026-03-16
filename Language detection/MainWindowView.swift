@@ -467,16 +467,226 @@ struct ProTipCardView: View {
 // MARK: - Placeholder Views
 
 struct ExceptionsView: View {
+    @EnvironmentObject var appState: AppState
+    @State private var newWord: String = ""
+    @State private var newApp: String = ""
+    @State private var selectedTab: Int = 0
+
     var body: some View {
-        VStack {
-            Text("Exceptions")
-                .font(.largeTitle)
-                .foregroundColor(.white)
-            Text("Configure apps and words to exclude from automatic switching")
+        VStack(alignment: .leading, spacing: 0) {
+            // Header
+            HStack {
+                Text("Exceptions")
+                    .font(.system(size: 28, weight: .bold))
+                    .foregroundColor(.white)
+                Spacer()
+            }
+            .padding(.horizontal, 32)
+            .padding(.top, 24)
+            .padding(.bottom, 8)
+
+            Text("Configure apps and words to exclude from automatic switching.")
+                .font(.system(size: 13))
                 .foregroundColor(.gray)
+                .padding(.horizontal, 32)
+                .padding(.bottom, 20)
+
+            // Tab picker
+            Picker("", selection: $selectedTab) {
+                Text("Excluded Words").tag(0)
+                Text("Excluded Apps").tag(1)
+            }
+            .pickerStyle(.segmented)
+            .padding(.horizontal, 32)
+            .padding(.bottom, 16)
+
+            if selectedTab == 0 {
+                excludedWordsSection
+            } else {
+                excludedAppsSection
+            }
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 0.08, green: 0.09, blue: 0.10))
+    }
+
+    private var excludedWordsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Add word
+            HStack(spacing: 8) {
+                TextField("Add a word to exclude...", text: $newWord)
+                    .textFieldStyle(.roundedBorder)
+                Button("Add") {
+                    let trimmed = newWord.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty, !appState.excludedWords.contains(trimmed) else { return }
+                    appState.excludedWords.append(trimmed)
+                    newWord = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newWord.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 32)
+
+            // List
+            if appState.excludedWords.isEmpty {
+                VStack(spacing: 8) {
+                    Text("No excluded words")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    Text("Words added here will never be auto-corrected.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(appState.excludedWords, id: \.self) { word in
+                            HStack {
+                                Text(word)
+                                    .foregroundColor(.white)
+                                Spacer()
+                                Button(action: {
+                                    appState.excludedWords.removeAll { $0 == word }
+                                }) {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red.opacity(0.8))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+
+                            Divider().background(Color.gray.opacity(0.2))
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.13, green: 0.14, blue: 0.16))
+                    )
+                }
+                .padding(.horizontal, 32)
+            }
+        }
+    }
+
+    private var excludedAppsSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Add app by bundle ID
+            HStack(spacing: 8) {
+                TextField("App bundle ID (e.g. com.apple.Notes)", text: $newApp)
+                    .textFieldStyle(.roundedBorder)
+                Button("Add") {
+                    let trimmed = newApp.trimmingCharacters(in: .whitespaces)
+                    guard !trimmed.isEmpty, !appState.excludedApps.contains(trimmed) else { return }
+                    appState.excludedApps.append(trimmed)
+                    newApp = ""
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(newApp.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            .padding(.horizontal, 32)
+
+            // Running apps picker
+            RunningAppsPickerView()
+                .environmentObject(appState)
+                .padding(.horizontal, 32)
+
+            // List
+            if appState.excludedApps.isEmpty {
+                VStack(spacing: 8) {
+                    Text("No excluded apps")
+                        .font(.system(size: 14))
+                        .foregroundColor(.gray)
+                    Text("Apps added here will not trigger auto-correction.")
+                        .font(.system(size: 12))
+                        .foregroundColor(.gray.opacity(0.7))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+            } else {
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(appState.excludedApps, id: \.self) { bundleID in
+                            HStack {
+                                Text(bundleID)
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 13, design: .monospaced))
+                                Spacer()
+                                Button(action: {
+                                    appState.excludedApps.removeAll { $0 == bundleID }
+                                }) {
+                                    Image(systemName: "trash")
+                                        .foregroundColor(.red.opacity(0.8))
+                                }
+                                .buttonStyle(.plain)
+                            }
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 10)
+
+                            Divider().background(Color.gray.opacity(0.2))
+                        }
+                    }
+                    .background(
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(Color(red: 0.13, green: 0.14, blue: 0.16))
+                    )
+                }
+                .padding(.horizontal, 32)
+            }
+        }
+    }
+}
+
+/// Displays running apps for quick exclusion
+struct RunningAppsPickerView: View {
+    @EnvironmentObject var appState: AppState
+
+    private var runningApps: [(name: String, bundleID: String)] {
+        NSWorkspace.shared.runningApplications
+            .filter { $0.activationPolicy == .regular }
+            .compactMap { app in
+                guard let name = app.localizedName, let bid = app.bundleIdentifier else { return nil }
+                return (name, bid)
+            }
+            .sorted { $0.name < $1.name }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Quick add from running apps:")
+                .font(.system(size: 12))
+                .foregroundColor(.gray)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    ForEach(runningApps, id: \.bundleID) { app in
+                        let isExcluded = appState.excludedApps.contains(app.bundleID)
+                        Button(action: {
+                            if isExcluded {
+                                appState.excludedApps.removeAll { $0 == app.bundleID }
+                            } else {
+                                appState.excludedApps.append(app.bundleID)
+                            }
+                        }) {
+                            Text(app.name)
+                                .font(.system(size: 12))
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 5)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(isExcluded ? Color.red.opacity(0.3) : Color(red: 0.2, green: 0.21, blue: 0.23))
+                                )
+                                .foregroundColor(isExcluded ? .red : .white)
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
     }
 }
 
